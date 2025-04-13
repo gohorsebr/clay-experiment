@@ -1,0 +1,6 @@
+# use an alternative ssh key to push
+git config core.sshCommand "ssh -i ~/.ssh/my_custom_key -F /dev/null"
+GIT_TRACE=1 GIT_SSH_COMMAND="ssh -i ~/.ssh/my_custom_key -v"
+
+git config core.sshCommand
+git config --unset core.sshCommand
