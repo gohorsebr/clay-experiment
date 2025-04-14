@@ -9,6 +9,7 @@
 #define MAX_CMD 1024
 #define MAX_PATH_SIZE MAX_PATH
 PROCESS_INFORMATION currentProcess = {0};
+HANDLE hJob = NULL;
 #else
 #include <unistd.h>
 #include <sys/inotify.h>
@@ -26,12 +27,33 @@ char initialCwd[MAX_PATH_SIZE];
 char lastModifiedFile[MAX_PATH_SIZE] = "";
 time_t lastRunTime = 0;
 
+const char *extensions[] = {".c", ".h"};
+int numExtensions = sizeof(extensions) / sizeof(extensions[0]);
+
+int hasWatchedExtension(const char *filename)
+{
+    for (int i = 0; i < numExtensions; ++i)
+    {
+        if (strstr(filename, extensions[i]) != NULL)
+        {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 void killPreviousProcess()
 {
 #ifdef _WIN32
+    if (hJob)
+    {
+        // Closing job handle kills all processes in the job
+        CloseHandle(hJob);
+        hJob = NULL;
+    }
+
     if (currentProcess.hProcess)
     {
-        TerminateProcess(currentProcess.hProcess, 0);
         CloseHandle(currentProcess.hProcess);
         CloseHandle(currentProcess.hThread);
         ZeroMemory(&currentProcess, sizeof(currentProcess));
@@ -61,13 +83,31 @@ void startProcess(const char *command)
     char cmd[MAX_CMD];
     strncpy(cmd, command, MAX_CMD);
 
+    // Create Job Object
+    hJob = CreateJobObject(NULL, NULL);
+    if (hJob == NULL)
+    {
+        printf("Failed to create Job Object: %lu\n", GetLastError());
+        return;
+    }
+
+    JOBOBJECT_EXTENDED_LIMIT_INFORMATION jeli = {0};
+    jeli.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+    if (!SetInformationJobObject(hJob, JobObjectExtendedLimitInformation, &jeli, sizeof(jeli)))
+    {
+        printf("Failed to set Job Object info: %lu\n", GetLastError());
+        CloseHandle(hJob);
+        hJob = NULL;
+        return;
+    }
+
     BOOL success = CreateProcessA(
         NULL,
         cmd,
         NULL,
         NULL,
         FALSE,
-        0,
+        CREATE_SUSPENDED,
         NULL,
         NULL,
         &si,
@@ -76,11 +116,24 @@ void startProcess(const char *command)
     if (!success)
     {
         printf("Failed to start process: %lu\n", GetLastError());
+        return;
     }
-    else
+
+    // Assign to job
+    if (!AssignProcessToJobObject(hJob, currentProcess.hProcess))
     {
-        printf("[Watcher] Started process: %s\n", command);
+        printf("Failed to assign process to job object: %lu\n", GetLastError());
+        TerminateProcess(currentProcess.hProcess, 0);
+        CloseHandle(currentProcess.hProcess);
+        CloseHandle(currentProcess.hThread);
+        CloseHandle(hJob);
+        hJob = NULL;
+        return;
     }
+
+    ResumeThread(currentProcess.hThread);
+    printf("[Watcher] Started process: %s\n", command);
+
 #else
     childPid = fork();
     if (childPid == 0)
@@ -109,6 +162,11 @@ void handleChange(const char *path, const char *filename, const char *command)
 {
     // 1 second debounce
     if (difftime(time(NULL), lastRunTime) < 1)
+    {
+        return;
+    }
+
+    if (!hasWatchedExtension(filename))
     {
         return;
     }
