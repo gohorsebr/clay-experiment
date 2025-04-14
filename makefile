@@ -12,4 +12,7 @@ run-nt:
 	./build/app.exe
 
 clean:
-	rm -rf build/ __tmp__/ external/ *.out
+	rm -rf build/*.exe *.out
+
+prune: clean
+	rm -rf build/ __tmp__/ external/
