@@ -62,7 +62,8 @@ void killPreviousProcess()
 #else
     if (childPid > 0)
     {
-        kill(childPid, SIGKILL);
+        //The negative PID tells kill to send the signal to the whole group.
+        kill(-childPid, SIGKILL);
         waitpid(childPid, NULL, 0);
         printf("[Watcher] Previous process killed.\n");
         childPid = -1;
@@ -138,7 +139,8 @@ void startProcess(const char *command)
     childPid = fork();
     if (childPid == 0)
     {
-        // child process
+        // Create a new process group
+        setpgid(0, 0);
         chdir(initialCwd);
         execl("/bin/sh", "sh", "-c", command, (char *)NULL);
         perror("execl failed");
