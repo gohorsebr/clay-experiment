@@ -7,7 +7,7 @@
 #include <windows.h>
 #include <tlhelp32.h>
 #define MAX_CMD 1024
-#define MAX_PATH_BUF MAX_PATH
+#define MAX_PATH_SIZE MAX_PATH
 PROCESS_INFORMATION currentProcess = {0};
 #else
 #include <unistd.h>
@@ -18,12 +18,12 @@ PROCESS_INFORMATION currentProcess = {0};
 #include <linux/limits.h>
 #include <signal.h>
 #include <errno.h>
-#define MAX_PATH_BUF PATH_MAX
+#define MAX_PATH_SIZE PATH_MAX
 pid_t childPid = -1;
 #endif
 
-char initialCwd[MAX_PATH_BUF];
-char lastModifiedFile[MAX_PATH_BUF] = "";
+char initialCwd[MAX_PATH_SIZE];
+char lastModifiedFile[MAX_PATH_SIZE] = "";
 time_t lastRunTime = 0;
 
 void killPreviousProcess()
@@ -119,7 +119,7 @@ void handleChange(const char *path, const char *filename, const char *command)
     // }
 
     // Store the last modified file and trigger process
-    strncpy(lastModifiedFile, filename, MAX_PATH_BUF);
+    strncpy(lastModifiedFile, filename, MAX_PATH_SIZE);
     printf("[Watcher] File changed: %s\n", filename);
     startProcess(command);
 }
@@ -163,11 +163,11 @@ void watchDirectory(const char *path, const char *command)
             FILE_NOTIFY_INFORMATION *info = (FILE_NOTIFY_INFORMATION *)buffer;
             do
             {
-                char filename[MAX_PATH];
+                char filename[MAX_PATH_SIZE];
                 int count = WideCharToMultiByte(
                     CP_ACP, 0, info->FileName,
                     info->FileNameLength / sizeof(WCHAR),
-                    filename, MAX_PATH - 1,
+                    filename, MAX_PATH_SIZE - 1,
                     NULL, NULL);
                 filename[count] = '\0';
 
@@ -207,7 +207,7 @@ void watchDirectory(const char *path, const char *command)
 
     printf("[Watcher] Watching: %s\n", path);
 
-    char buffer[4096];
+    char buffer[MAX_PATH_SIZE];
     while (1)
     {
         int length = read(fd, buffer, sizeof(buffer));
@@ -244,7 +244,7 @@ int main(int argc, char *argv[])
     }
 
 #ifdef _WIN32
-    GetCurrentDirectoryA(MAX_PATH, initialCwd);
+    GetCurrentDirectoryA(MAX_PATH_SIZE, initialCwd);
 #else
     getcwd(initialCwd, sizeof(initialCwd));
 #endif
