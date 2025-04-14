@@ -5,7 +5,7 @@
 ```bash
 # download dependencies & setup it (sdl, sdl_ttf, sdl_image...)
 
-./download.sh
+./download.sh --all
 
 # build nt
 make nt
