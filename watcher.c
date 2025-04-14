@@ -15,6 +15,7 @@ PROCESS_INFORMATION currentProcess = {0};
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <limits.h>
+#include <linux/limits.h>
 #include <signal.h>
 #include <errno.h>
 #define MAX_PATH_BUF PATH_MAX
@@ -118,7 +119,7 @@ void handleChange(const char *path, const char *filename, const char *command)
     // }
 
     // Store the last modified file and trigger process
-    strncpy(lastModifiedFile, filename, MAX_PATH);
+    strncpy(lastModifiedFile, filename, MAX_PATH_BUF);
     printf("[Watcher] File changed: %s\n", filename);
     startProcess(command);
 }

@@ -18,4 +18,4 @@ prune: clean
 	rm -rf build/ __tmp__/ external/
 
 build-watcher:
-	gcc -o watcher watcher.c -Wall
+	gcc -o watcher.out watcher.c -Wall
