@@ -10,3 +10,6 @@ run:
 
 run-nt:
 	./build/app.exe
+
+clean:
+	rm -rf build/ __tmp__/ external/ *.out
