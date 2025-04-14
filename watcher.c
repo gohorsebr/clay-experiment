@@ -62,7 +62,7 @@ void killPreviousProcess()
 #else
     if (childPid > 0)
     {
-        //The negative PID tells kill to send the signal to the whole group.
+        // The negative PID tells kill to send the signal to the whole group.
         kill(-childPid, SIGKILL);
         waitpid(childPid, NULL, 0);
         printf("[Watcher] Previous process killed.\n");
@@ -295,6 +295,27 @@ void watchDirectory(const char *path, const char *command)
 }
 #endif
 
+// trap sigint
+#ifdef _WIN32
+BOOL WINAPI ConsoleHandler(DWORD signal)
+{
+    if (signal == CTRL_C_EVENT || signal == CTRL_BREAK_EVENT)
+    {
+        printf("\n[Watcher] Caught CTRL+C, cleaning up...\n");
+        killPreviousProcess();
+        ExitProcess(0);
+    }
+    return TRUE;
+}
+#else
+void handleSigint(int sig)
+{
+    printf("\n[Watcher] Caught SIGINT, cleaning up...\n");
+    killPreviousProcess();
+    exit(0);
+}
+#endif
+
 int main(int argc, char *argv[])
 {
     if (argc < 4 || strcmp(argv[2], "--exec") != 0)
@@ -305,8 +326,10 @@ int main(int argc, char *argv[])
 
 #ifdef _WIN32
     GetCurrentDirectoryA(MAX_PATH_SIZE, initialCwd);
+    SetConsoleCtrlHandler(ConsoleHandler, TRUE);
 #else
     getcwd(initialCwd, sizeof(initialCwd));
+    signal(SIGINT, handleSigint);
 #endif
 
     const char *path = argv[1];
