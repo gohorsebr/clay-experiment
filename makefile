@@ -12,7 +12,10 @@ run-nt:
 	./build/app.exe
 
 clean:
-	rm -rf build/*.exe *.out
+	rm -rf build/*.exe *.out *.exe
 
 prune: clean
 	rm -rf build/ __tmp__/ external/
+
+build-watcher:
+	gcc -o watcher watcher.c -Wall
